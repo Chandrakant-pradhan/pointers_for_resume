@@ -6,115 +6,80 @@ def Gale_Shapley(suitor_prefs, reviewer_prefs) -> Dict[str, str]:
         Gale-Shapley Algorithm for Stable Matching
 
         Parameters:
-
         suitor_prefs: dict - Dictionary of suitor preferences
         reviewer_prefs: dict - Dictionary of reviewer preferences
 
         Returns:
-
         matching: dict - Dictionary of suitor matching with reviewer
     '''
 
-    matching = {}
+    # Each suitor is free initially
+    free_suitors = list(suitor_prefs.keys())
+    # To track proposals
+    proposals = {s: [] for s in suitor_prefs}
+    # Current matches
+    matches = {}
 
-    ## TODO: Implement the Gale-Shapley Algorithm
-    matched_sui = {}
-    matched_rev = {}
-    men_left = 0
-    women_left = 0
+    # Create a ranking dictionary for reviewers for quick comparison
+    reviewer_rank = {
+        r: {s: i for i, s in enumerate(prefs)} for r, prefs in reviewer_prefs.items()
+    }
 
-    for i,j in suitor_prefs.items():
-        matched_sui[i] = False
-        men_left += 1
-    
-    for i,j in reviewer_prefs.items():
-        matched_rev[i] = False
-        women_left += 1
-    
-    while(women_left > 0):
-        #jab tak ladkiya hai ham propose karenge
-        free_men = None
-        for i,j in matched_sui.items():
-            if(not j):
-                free_men = i
+    while free_suitors:
+        suitor = free_suitors.pop(0)
+        # Get his preference list
+        prefs = suitor_prefs[suitor]
+
+        # Propose to the next reviewer he hasn’t proposed yet
+        for reviewer in prefs:
+            if reviewer not in proposals[suitor]:
+                proposals[suitor].append(reviewer)
+
+                if reviewer not in matches:
+                    # Reviewer is free → accept
+                    matches[reviewer] = suitor
+                else:
+                    # Reviewer already matched → check preference
+                    current_suitor = matches[reviewer]
+                    if reviewer_rank[reviewer][suitor] < reviewer_rank[reviewer][current_suitor]:
+                        # Reviewer prefers new suitor → switch
+                        matches[reviewer] = suitor
+                        free_suitors.append(current_suitor)  # old suitor becomes free
+                    else:
+                        # Reviewer rejects → suitor remains free
+                        free_suitors.append(suitor)
                 break
 
-    # while(men_left > 0):
-    #     free_men = None
-    #     for i,j in matched_sui.items():
-    #         if(not j):
-    #             free_men = i
-    #             break
-    #     #see his preference list
-    #     pref_list = suitor_prefs[free_men]
-    #     for iter in range(len(pref_list)):
-    #         if(not matched_rev[iter]):
-
-    
-    ## END TODO
-
+    # Convert reviewer→suitor mapping to suitor→reviewer mapping
+    matching = {s: r for r, s in matches.items()}
     return matching
+
 
 def avg_suitor_ranking(suitor_prefs: Dict[str, List[str]], matching: Dict[str, str]) -> float:
     '''
         Calculate the average ranking of suitor in the matching
-        
-        Parameters:
-        
-        suitor_prefs: dict - Dictionary of suitor preferences
-        matching: dict - Dictionary of matching
-        
-        Returns:
-        
-        avg_suitor_ranking: float - Average ranking of suitor
     '''
+    total_rank = 0
+    n = len(suitor_prefs)
+    for suitor, reviewer in matching.items():
+        total_rank += suitor_prefs[suitor].index(reviewer) + 1  # +1 for 1-based rank
+    return total_rank / n
 
-    avg_suitor_ranking = 0
-
-    ## TODO: Implement the average suitor ranking calculation
-
-    ## END TODO
-
-    assert type(avg_suitor_ranking) == float
-
-    return avg_suitor_ranking
 
 def avg_reviewer_ranking(reviewer_prefs: Dict[str, List[str]], matching: Dict[str, str]) -> float:
     '''
         Calculate the average ranking of reviewer in the matching
-        
-        Parameters:
-        
-        reviewer_prefs: dict - Dictionary of reviewer preferences
-        matching: dict - Dictionary of matching
-        
-        Returns:
-        
-        avg_reviewer_ranking: float - Average ranking of reviewer
     '''
+    total_rank = 0
+    n = len(reviewer_prefs)
+    for suitor, reviewer in matching.items():
+        total_rank += reviewer_prefs[reviewer].index(suitor) + 1
+    return total_rank / n
 
-    avg_reviewer_ranking = 0
-
-    ## TODO: Implement the average reviewer ranking calculation
-
-    ## END TODO
-
-    assert type(avg_reviewer_ranking) == float
-
-    return avg_reviewer_ranking
 
 def get_preferences(file) -> Tuple[Dict[str, List[str]], Dict[str, List[str]]]:
     '''
         Get the preferences from the file
-        
-        Parameters:
-        
-        file: file - File containing the preferences
-        
-        Returns:
-        
-        suitor_prefs: dict - Dictionary of suitor preferences
-        reviewer_prefs: dict - Dictionary of reviewer preferences
     '''
     suitor_prefs = {}
     reviewer_prefs = {}
@@ -123,7 +88,6 @@ def get_preferences(file) -> Tuple[Dict[str, List[str]], Dict[str, List[str]]]:
         if line[0].islower():
             reviewer, prefs = line.strip().split(' : ')
             reviewer_prefs[reviewer] = prefs.split()
-
         else:
             suitor, prefs = line.strip().split(' : ')
             suitor_prefs[suitor] = prefs.split()
@@ -140,18 +104,6 @@ if __name__ == '__main__':
         with open('data/data_'+str(i)+'.txt', 'r') as f:
             suitor_prefs, reviewer_prefs = get_preferences(f)
 
-            # suitor_prefs = {
-            #     'A': ['a', 'b', 'c'],
-            #     'B': ['c', 'b', 'a'],
-            #     'C': ['c', 'a', 'b']
-            # }
-
-            # reviewer_prefs = {
-            #     'a': ['A', 'C', 'B'],
-            #     'b': ['B', 'A', 'C'],
-            #     'c': ['B', 'A', 'C']
-            # }
-
             matching = Gale_Shapley(suitor_prefs, reviewer_prefs)
 
             avg_suitor_ranking_list.append(avg_suitor_ranking(suitor_prefs, matching))
@@ -162,10 +114,6 @@ if __name__ == '__main__':
 
     plt.xlabel('Average Ranking')
     plt.ylabel('Frequency')
-
     plt.legend()
     plt.savefig('q2.png')
-
-
-    
 
